@@ -3,6 +3,8 @@ package cache
 import (
 	"testing"
 
+	"github.com/Deadlift3008/tasks/cache/mock"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -61,6 +63,24 @@ func TestCache(t *testing.T) {
 		"gavno":   "gavnoValue",
 		"muravei": "muraveiValue",
 	}
+
+	t.Run("Should test via mocks", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		db := mock.NewMockDB(ctrl)
+
+		cache := NewCache(db)
+
+		db.EXPECT().Get("zhopa").Return("zhopaValue", nil).Times(1)
+
+		var result string
+		for i := 0; i < 10; i++ {
+			result, _ = cache.Get("zhopa")
+		}
+
+		require.Equal(t, "zhopaValue", result)
+	})
 
 	t.Run("Should get value from db if no in cache", func(t *testing.T) {
 		dbMockInstance := NewDBMock(testData)
