@@ -52,3 +52,76 @@ func BuyerDissatisfaction(goods []int, buyerNeeds []int) int {
 
 	return result
 }
+
+//==================================================================
+
+type Stat struct {
+	userId int
+	steps  int
+}
+
+type Champions struct {
+	userIds []int
+	steps   int
+}
+
+type TransformedRecordMap map[int]int
+
+func transformRecordsToMap(statistics [][]Stat) []TransformedRecordMap {
+	result := make([]TransformedRecordMap, 0)
+
+	for _, dayRecord := range statistics {
+		localMap := make(map[int]int, 0)
+
+		for _, userRecord := range dayRecord {
+			localMap[userRecord.userId] = userRecord.steps
+		}
+
+		result = append(result, localMap)
+	}
+
+	return result
+}
+
+func GetChampions(statistics [][]Stat) Champions {
+	candidates := make(map[int]int, 0)
+
+	for _, userRecord := range statistics[0] {
+		candidates[userRecord.userId] = 0
+	}
+
+	if len(candidates) == 0 {
+		return Champions{}
+	}
+
+	statMaps := transformRecordsToMap(statistics)
+
+	maxSteps := 0
+
+	for _, dayStat := range statMaps {
+		for candidate := range candidates {
+			candidateSteps, exist := dayStat[candidate]
+
+			if !exist {
+				delete(candidates, candidate)
+				continue
+			}
+
+			candidates[candidate] += candidateSteps
+
+			if candidates[candidate] > maxSteps {
+				maxSteps = candidates[candidate]
+			}
+		}
+	}
+
+	championsIds := make([]int, 0)
+
+	for candidateId, steps := range candidates {
+		if steps == maxSteps {
+			championsIds = append(championsIds, candidateId)
+		}
+	}
+
+	return Champions{userIds: championsIds, steps: maxSteps}
+}

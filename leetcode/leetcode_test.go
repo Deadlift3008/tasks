@@ -25,3 +25,77 @@ func TestBuyerDissatisfaction(t *testing.T) {
 		require.Equal(t, 16, result)
 	})
 }
+
+func TestGetChampions(t *testing.T) {
+	t.Run("with only one user with all days records", func(t *testing.T) {
+		testData := [][]Stat{{{
+			userId: 1,
+			steps:  100,
+		}, {
+			userId: 2,
+			steps:  200,
+		}}, {{
+			userId: 1,
+			steps:  100,
+		}}, {{
+			userId: 1,
+			steps:  500,
+		}}}
+
+		result := GetChampions(testData)
+
+		require.Equal(t, Champions{userIds: []int{1}, steps: 700}, result)
+	})
+
+	t.Run("if 2 users with all days records", func(t *testing.T) {
+		testData := [][]Stat{{{
+			userId: 1,
+			steps:  100,
+		}, {
+			userId: 2,
+			steps:  200,
+		}}, {{
+			userId: 1,
+			steps:  100,
+		}, {
+			userId: 2,
+			steps:  300,
+		}}, {{
+			userId: 1,
+			steps:  500,
+		}, {
+			userId: 2,
+			steps:  300,
+		}}}
+
+		result := GetChampions(testData)
+
+		require.Equal(t, Champions{userIds: []int{2}, steps: 800}, result)
+	})
+
+	t.Run("if 2 users with all days records and equal steps", func(t *testing.T) {
+		testData := [][]Stat{{{
+			userId: 1,
+			steps:  100,
+		}, {
+			userId: 2,
+			steps:  200,
+		}}, {{
+			userId: 1,
+			steps:  100,
+		}, {
+			userId: 2,
+			steps:  300,
+		}}, {{
+			userId: 1,
+			steps:  500,
+		}, {
+			userId: 2,
+			steps:  200,
+		}}}
+
+		result := GetChampions(testData)
+
+		require.Equal(t, Champions{userIds: []int{1, 2}, steps: 700}, result)
+	})
+}
