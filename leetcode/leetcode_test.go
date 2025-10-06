@@ -99,3 +99,13 @@ func TestGetChampions(t *testing.T) {
 		require.Equal(t, Champions{userIds: []int{1, 2}, steps: 700}, result)
 	})
 }
+
+func TestTopKLargest(t *testing.T) {
+	t.Run("simple case", func(t *testing.T) {
+		testData := []int{100, 20, 10, 500, 1}
+
+		result := TopKLargest(testData, 2)
+
+		require.Equal(t, []int{500, 100}, result)
+	})
+}

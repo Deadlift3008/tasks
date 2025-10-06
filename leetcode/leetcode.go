@@ -1,6 +1,7 @@
 package leetcode
 
 import (
+	"container/heap"
 	"math"
 	"slices"
 	"sort"
@@ -124,4 +125,60 @@ func GetChampions(statistics [][]Stat) Champions {
 	}
 
 	return Champions{userIds: championsIds, steps: maxSteps}
+}
+
+//-----------------------------------------
+
+type MinHeap []int
+
+func (h MinHeap) Len() int {
+	return len(h)
+}
+
+func (h MinHeap) Less(i, j int) bool {
+	return h[i] < h[j]
+}
+
+func (h MinHeap) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
+}
+
+func (h *MinHeap) Push(x interface{}) {
+	*h = append(*h, x.(int))
+}
+
+func (h *MinHeap) Pop() interface{} {
+	old := *h
+	last := old[len(old)-1]
+	*h = old[:len(old)-1]
+
+	return last
+}
+
+func TopKLargest(nums []int, k int) []int {
+	h := &MinHeap{}
+
+	heap.Init(h)
+
+	for _, num := range nums {
+		if h.Len() < k {
+			heap.Push(h, num)
+			continue
+		}
+
+		if (*h)[0] < num {
+			heap.Pop(h)
+			heap.Push(h, num)
+		}
+
+	}
+
+	result := make([]int, 0, k)
+
+	for h.Len() != 0 {
+		popped := h.Pop()
+		result = append(result, popped.(int))
+	}
+
+	return result
 }
