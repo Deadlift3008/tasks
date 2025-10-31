@@ -85,6 +85,10 @@ func main() {
 		go func() {
 			defer wg.Done()
 			lb.DoRequest()
+
+			if i%3 == 0 {
+				fmt.Println(lb.GetStats())
+			}
 		}()
 	}
 
