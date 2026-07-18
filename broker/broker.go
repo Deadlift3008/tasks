@@ -12,5 +12,14 @@ package main
 
 */
 
+// topics
+// message, stored in slices
+// consumers
+// producers
+
+// WriteToTopic(topic, message)
+// Subscribe(topic, chan)
+//
+
 type IBroker interface {
 }
