@@ -1,6 +1,9 @@
 package main
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 /*
 Нужно реализовать брокер сообщений, где сообщения — это []byte.
@@ -14,23 +17,25 @@ import "sync"
 
 */
 
-// TODO: дописать sendMessages
-// TODO: поправить синхронизацию для кейсов:
-// когда пишут много и когда читателей много
-// чтобы сохранялась независимость
+// TODO: прожарить ллм
+// Спросить корректно ли решение, есть ли недочеты, как можно сделать по другому
+// и какое доп задание может дать интервьювер
 
 type Message []byte
 
 type IBroker interface {
-	WriteToTopic(topic, message Message) error
-	Subscribe(topic string, ch chan Message) error
+	WriteToTopic(topic, message Message)
+	Subscribe(topic string, ch chan Message)
+}
+
+type SyncableList[T any] struct {
+	list []T
+	mu   *sync.Mutex
 }
 
 type DeliveryData struct {
-	consumers []chan Message
-	messages  []Message
-	mu        sync.Mutex
-	cmu       sync.Mutex
+	consumers SyncableList[chan Message]
+	messages  SyncableList[Message]
 }
 
 type DeliveryMap map[string]DeliveryData
@@ -39,35 +44,32 @@ type Broker struct {
 	deliveryMap DeliveryMap
 }
 
-func (b *Broker) WriteToTopic(topic string, message Message) error {
+func (b *Broker) WriteToTopic(topic string, message Message) {
 	deliveryData, ok := b.deliveryMap[topic]
 
 	if !ok {
 		b.createTopic(topic)
 	}
 
-	deliveryData.mu.Lock()
-	defer deliveryData.mu.Unlock()
+	deliveryData.messages.mu.Lock()
+	defer deliveryData.messages.mu.Unlock()
 
-	deliveryData.messages = append(deliveryData.messages, message)
-
-	go b.sendMessages(topic)
-
-	return nil
+	deliveryData.messages.list = append(deliveryData.messages.list, message)
 }
 
-func (b *Broker) Subscribe(topic string, ch chan Message) error {
+func (b *Broker) Subscribe(topic string, ch chan Message) {
 	deliveryData, ok := b.deliveryMap[topic]
 
 	if !ok {
 		b.createTopic(topic)
 	}
 
-	deliveryData.cmu.Lock()
-	defer deliveryData.cmu.Unlock()
+	currentConsumers := &deliveryData.consumers
 
-	deliveryData.consumers = append(deliveryData.consumers, ch)
-	return nil
+	currentConsumers.mu.Lock()
+	defer currentConsumers.mu.Unlock()
+
+	currentConsumers.list = append(currentConsumers.list, ch)
 }
 
 func (b *Broker) createTopic(topic string) {
@@ -77,6 +79,42 @@ func (b *Broker) createTopic(topic string) {
 func (b *Broker) sendMessages(topic string) error {
 	deliveryData, ok := b.deliveryMap[topic]
 
+	if !ok {
+		return fmt.Errorf("No topic for sending messages: %s", topic)
+	}
+
+	var consumersListCopy []chan Message
+	var messagesListCopy []Message
+
+	copy(consumersListCopy, deliveryData.consumers.list)
+	copy(messagesListCopy, deliveryData.messages.list)
+
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < len(consumersListCopy); i++ {
+		wg.Add(1)
+
+		go func(index int) {
+			for j := 0; j < len(messagesListCopy); j++ {
+				consumersListCopy[index] <- messagesListCopy[j]
+			}
+
+			newDeliveryData, ok := b.deliveryMap[topic]
+
+			if !ok {
+				return
+			}
+
+			newDeliveryData.messages.mu.Lock()
+			defer newDeliveryData.messages.mu.Unlock()
+
+			newDeliveryData.messages.list = newDeliveryData.messages.list[len(messagesListCopy):]
+
+			defer wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
 }
 
 func NewBroker() *Broker {
