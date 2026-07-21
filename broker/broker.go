@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 /*
@@ -16,10 +17,6 @@ import (
 Для каждого топика — отдельная структура с очередью сообщений и списком читателей.
 
 */
-
-// TODO: прожарить ллм
-// Спросить корректно ли решение, есть ли недочеты, как можно сделать по другому
-// и какое доп задание может дать интервьювер
 
 type Message []byte
 
@@ -115,6 +112,33 @@ func (b *Broker) sendMessages(topic string) error {
 	}
 
 	wg.Wait()
+
+	return nil
+}
+
+func (b *Broker) StartObserving(intervalMs int, workersCount int) {
+	taskChan := make(chan string)
+
+	go func() {
+		for {
+			time.Sleep(time.Millisecond * time.Duration(intervalMs))
+
+			for topic := range b.deliveryMap {
+				taskChan <- topic
+			}
+		}
+	}()
+
+	go func() {
+		for i := 0; i < workersCount; i++ {
+			go func() {
+				for {
+					topic := <-taskChan
+					b.sendMessages(topic)
+				}
+			}()
+		}
+	}()
 }
 
 func NewBroker() *Broker {
